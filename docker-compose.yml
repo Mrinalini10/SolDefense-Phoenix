@@ -1,0 +1,41 @@
+services:
+  exasol:
+    image: exasol/docker-db:8.27.0
+    platform: linux/amd64
+    container_name: exasol-personal
+    privileged: true
+    ports:
+      - "8563:8563"
+      - "2580:2580"
+    command: init-sc --node-id 11
+
+  proxy:
+    build:
+      context: .
+      dockerfile: proxy/Dockerfile
+    container_name: exasentinel-proxy
+    env_file: .env
+    environment:
+      - EXASOL_HOST=exasol:8563
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - exasol
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: proxy/Dockerfile
+    container_name: exasentinel-scheduler
+    command: python proxy/scheduler.py
+    env_file: .env
+    environment:
+      - EXASOL_HOST=exasol:8563
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - exasol
+    restart: unless-stopped
