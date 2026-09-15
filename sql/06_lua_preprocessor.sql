@@ -71,7 +71,7 @@ if string.find(lower_sql, PROXY_MARKER:lower(), 1, true) then
 end
 
 -- 3. Pass-through: health-check ping  (SELECT 1)
-if lower_sql:match("^%s*select%s+1%s*;?%s*$") then
+if lower_sql:match("^%s*select%s+1%s*\59?%s*$") then
     sqlparsing.setsqltext(sql_text)
     return
 end

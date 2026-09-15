@@ -1,7 +1,5 @@
 """
-Loads the sensitivity registry directly from Exasol's system catalog and
-column comments, so there is exactly one source of truth (the database
-schema itself) rather than a hardcoded list that drifts out of sync.
+Loads the sensitivity registry directly from Exasol's system catalog.
 """
 from __future__ import annotations
 import re
@@ -9,13 +7,8 @@ import re
 TAG_PATTERN = re.compile(r"@pii:([A-Z_]+)")
 
 def load_sensitive_columns(conn) -> dict[tuple[str, str, str], str]:
-    """
-    Returns { (SCHEMA, TABLE, COLUMN): SENSITIVITY_CLASS }
-    Reads SYS.EXA_ALL_COLUMNS and parses the '@pii:<CLASS>' tag out of the
-    column comment. This means tagging a new sensitive column is a single
-    COMMENT ON COLUMN statement - no code change required anywhere.
-    """
     rows = conn.execute("""
+        /*exasentinel-proxy*/
         SELECT column_schema, column_table, column_name, column_comment
         FROM SYS.EXA_ALL_COLUMNS
         WHERE column_comment IS NOT NULL
@@ -31,9 +24,8 @@ def load_sensitive_columns(conn) -> dict[tuple[str, str, str], str]:
     return registry
 
 def load_all_columns(conn, schema: str, table: str) -> list[str]:
-    """Used to expand `SELECT *` into an explicit column list before taint
-    analysis, so wildcard selects can't silently skip a tainted column."""
     rows = conn.execute(f"""
+        /*exasentinel-proxy*/
         SELECT column_name
         FROM SYS.EXA_ALL_COLUMNS
         WHERE column_schema = '{schema.upper()}'

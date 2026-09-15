@@ -1,15 +1,5 @@
 """
 SolDefense loop-detection scheduler.
-
-Runs the DEMO.LOOP_DETECTOR UDF on a fixed interval and pushes any newly
-detected runaway agents into DEMO.SUSPENDED_AGENTS.
-
-Design note (state this in the pitch): the *compute* happens entirely inside
-Exasol — the UDF's parallel scan over DEMO.QUERY_LOG. Only the *trigger* is
-external. This is honest architecture: Exasol Personal has no built-in
-cron/job scheduler, so a lightweight Python process fires the fixed SQL.
-This process never accepts arbitrary input, so it does not need to pass
-through the taint engine itself.
 """
 from __future__ import annotations
 
@@ -26,8 +16,6 @@ EXASOL_HOST = os.getenv("EXASOL_HOST", "localhost:8563")
 PROXY_USER  = os.getenv("PROXY_USER",  "PROXY_SERVICE_USER")
 PROXY_PW    = os.getenv("PROXY_PW",    "change_me_proxy_pw")
 
-# The proxy marker lets SQL_GUARD pass this admin statement through without
-# triggering the sensitive-column name check.
 DETECTION_SQL = """
 /*exasentinel-proxy*/
 INSERT INTO DEMO.SUSPENDED_AGENTS (agent_id, suspended_at, reason, released_at)
@@ -37,11 +25,11 @@ SELECT
     'Loop detected: ' || repeat_count || ' near-duplicate queries in window',
     NULL
 FROM (
-    SELECT DEMO.LOOP_DETECTOR(5, 5)
+    SELECT DEMO.LOOP_DETECTOR(agent_id, raw_sql)
     FROM (
         SELECT agent_id, raw_sql
         FROM   DEMO.QUERY_LOG
-        WHERE  logged_at >= CURRENT_TIMESTAMP - INTERVAL '5' SECOND
+        WHERE  logged_at >= CURRENT_TIMESTAMP - INTERVAL '30' SECOND
     )
     GROUP BY agent_id
 ) detections

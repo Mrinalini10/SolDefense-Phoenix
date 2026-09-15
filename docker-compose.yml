@@ -1,6 +1,6 @@
 services:
   exasol:
-    image: exasol/docker-db:8.27.0
+    image: exasol/docker-db:latest
     platform: linux/amd64
     container_name: exasol-personal
     privileged: true
